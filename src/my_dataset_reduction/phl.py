@@ -18,7 +18,7 @@ def getMaxPersistence(ripser_pd):
 	else:
 		finite_bars_where = np.invert(np.isinf(ripser_pd[:,1]))
 		finite_bars = ripser_pd[np.array(finite_bars_where),:]
-		max_persistence = np.max(finite_bars[:,1]-finite_bars[:,0])
+		max_persistence = np.max(finite_bars[:,1]-finite_bars[:,0], initial=0) # if there are no finite bars, return 0
 
 	return max_persistence
 

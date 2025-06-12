@@ -6,6 +6,7 @@ from collections import Counter
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.under_sampling import CondensedNearestNeighbour
 
+from sklearn.cluster import KMeans
 ##############################################################################
 #CLC
 #Clustering Centroids Selection
@@ -33,7 +34,8 @@ def clc_selection(X, y, perc):
     target_counts = {cls: max(1, trunc(count * perc)) for cls, count in class_counts.items()}
     
     # ClusterCentroids prototype generation method
-    clc_sampler = ClusterCentroids(sampling_strategy=target_counts, voting='soft')
+    kmeans = KMeans(n_init=1)
+    clc_sampler = ClusterCentroids(sampling_strategy=target_counts, voting='soft', estimator=kmeans)
     X_res, y_res = clc_sampler.fit_resample(X, y)
     return X_res, y_res
 

@@ -1,0 +1,3 @@
+dataset,output,target
+../datasets/pima.csv,../results/pima/,Outcome
+../datasets/dry+bean+dataset/DryBeanDataset/Dry_Bean_Dataset.xlsx,../results/drybeans/,Class
