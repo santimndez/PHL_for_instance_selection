@@ -192,3 +192,83 @@ def phl_selection(X, y, topological_radius, perc, scoring_version, dimension, la
         y_res = np.append(y_res, np.repeat(cl,n_cl))
         
     return X_res.reshape(-1, n_features), y_res
+
+# Functions to get landmarks from outlier scores
+# This way we can use the same outlier scores for different landmark types or data reduction percentages
+
+def getPHLOutlierScores(point_cloud, topological_radius, scoring_version, dimension):
+	if scoring_version == 'restrictedDim':
+		outlier_scores_point_cloud_original_order, _, _ = getPHOutlierScores_restrictedDim(point_cloud,topological_radius,dimension)
+
+	elif scoring_version == 'multiDim':
+		max_dim_ripser = dimension
+		outlier_scores_point_cloud_original_order, _, _ = getPHOutlierScores_multiDim(point_cloud,topological_radius,max_dim_ripser)
+	return outlier_scores_point_cloud_original_order
+
+# Get outlier scores for each instance in the dataset
+def phl_scores(X, y, topological_radius, scoring_version, dimension):
+	classes = np.unique(y)
+	outlier_scores_total = np.zeros(X.shape[0],dtype=float)
+ 
+	for cl in classes:
+		pool_cl = np.where(y==cl)
+		X_cl = X[pool_cl]
+
+		outlier_scores = getPHLOutlierScores(point_cloud=X_cl, 
+                                       topological_radius=topological_radius, 
+                                       scoring_version=scoring_version, 
+                                       dimension=dimension)
+  
+		outlier_scores_total[pool_cl] = outlier_scores
+
+	return outlier_scores_total
+
+def phl_from_scores(point_cloud, sampling_density, landmark_type, outlier_scores):
+	number_of_points = point_cloud.shape[0]
+	number_of_PH_landmarks = int(round(number_of_points*sampling_density))
+	number_of_super_outliers = np.count_nonzero(outlier_scores == 0)
+
+	# sort outlier_scores_point_cloud_original_order
+	sorted_indices_point_cloud_original_order = np.argsort(outlier_scores)
+
+	#Permute zeros
+	permuted_super_outlier_indices = np.random.permutation(sorted_indices_point_cloud_original_order[0:number_of_super_outliers])
+	
+	sorted_indices_point_cloud_original_order_without_super_outliers = np.array(sorted_indices_point_cloud_original_order[number_of_super_outliers:,])
+
+	if landmark_type == 'representative':#small scores
+
+		# We append the outliers at the end of the vector to select them last
+		sorted_indices_point_cloud_original_order = np.append(sorted_indices_point_cloud_original_order_without_super_outliers,permuted_super_outlier_indices)
+
+	elif landmark_type == 'vital':#large scores
+
+		#We append the super outliers before the low scores so we select these last
+		sorted_indices_point_cloud_original_order = np.append(permuted_super_outlier_indices,sorted_indices_point_cloud_original_order_without_super_outliers)
+
+		# we flip the vector to keep in line with previous landmark call
+		sorted_indices_point_cloud_original_order = np.flip(sorted_indices_point_cloud_original_order)
+
+	PH_landmarks = point_cloud[sorted_indices_point_cloud_original_order[range(number_of_PH_landmarks)],:]
+
+	return PH_landmarks
+
+# Get landmarks from outlier scores
+def phl_selection_from_scores(X, y, perc, landmark_type, outlier_scores):
+    classes = np.unique(y)
+    X_res = np.array([],dtype=float)
+    y_res = np.array([],dtype=float)
+    n_features = np.shape(X)[1]
+    
+    for cl in classes:
+        pool_cl = np.where(y==cl)
+        X_cl = X[pool_cl]
+        PHLandmarks = phl_from_scores(point_cloud=X_cl, 
+                                      sampling_density=perc, 
+                                      landmark_type=landmark_type, 
+                                      outlier_scores=outlier_scores[pool_cl])
+        n_cl = len(PHLandmarks)
+        X_res = np.append(X_res, PHLandmarks)
+        y_res = np.append(y_res, np.repeat(cl,n_cl))
+        
+    return X_res.reshape(-1, n_features), y_res

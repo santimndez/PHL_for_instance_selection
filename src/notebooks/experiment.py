@@ -20,7 +20,8 @@ from data_reduction.representativeness import find_epsilon
 import argparse
 
 sys.path.append('../')
-from my_dataset_reduction import phl_selection, srs_selection, clc_selection, drop3_selection, cnn_selection
+from my_dataset_reduction import phl_selection, phl_selection_from_scores, phl_scores, \
+                                 srs_selection, clc_selection, drop3_selection, cnn_selection
 
 # argparser
 parser = argparse.ArgumentParser(description='Instance selection experiment')
@@ -118,13 +119,20 @@ modes = ['representative', 'vital'] # if not PROFILING else ['representative']
 dimensions = [(1, 'restrictedDim'), (2, 'multiDim'), (0, 'restrictedDim')] # if not PROFILING else [(1, 'restrictedDim')]
 
 for model_name in models.keys():
-        for mode in modes:
-            for dimension, scoring_version in dimensions:
-                for percentage in percentages:
-                    for delta in deltas:
+        for dimension, scoring_version in dimensions:
+            for delta in deltas:
+                # Get score of each instance
+                t0 = time.time()
+                outlier_scores = phl_scores(X_train_scaled, y_train, delta, scoring_version, dimension)
+                score_time = time.time()-t0
+                for mode in modes:
+                    for percentage in percentages:
                         # Reduce the dataset
                         t0 = time.time()
-                        X_red, y_red = phl_selection(X_train_scaled, y_train, delta, percentage, scoring_version, dimension, mode)
+                        X_red, y_red = phl_selection_from_scores(X_train_scaled, y_train, 
+                                                                 perc = percentage, 
+                                                                 landmark_type=mode, 
+                                                                 outlier_scores=outlier_scores)
                         reduction_time = time.time() - t0
 
                         # Fit the model
@@ -155,7 +163,7 @@ for model_name in models.keys():
                             'accuracy': accuracy,
                             'f1': f1,
                             'training_time': training_time,
-                            'reduction_time': reduction_time,
+                            'reduction_time': score_time + reduction_time,
                         }, ignore_index=True)
 # Save the results
 phl_results.to_csv(f'{results_folder}/phl_results.csv', index=False)
