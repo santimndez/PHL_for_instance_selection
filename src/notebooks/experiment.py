@@ -20,7 +20,7 @@ from data_reduction.representativeness import find_epsilon
 import argparse
 
 sys.path.append('../')
-from my_dataset_reduction import phl_selection, phl_selection_from_scores, phl_scores, \
+from my_dataset_reduction import phl_selection, phl_selection_from_scores, phl_scores, get_max_distance, \
                                  srs_selection, clc_selection, drop3_selection, cnn_selection
 
 # argparser
@@ -90,6 +90,19 @@ X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
 # DATA REDUCTION
+percentages = [0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 0.9]
+metrics = ['reduction_ratio', 'representativeness', 'accuracy', 'f1', 'training_time', 'reduction_time']
+
+# PHL Hyperparameter experiments
+phl_results = pd.DataFrame(columns=['model', 'reduction_method', 'mode', 'dimensions', 'max_dimension', 'percentage', 'delta'] + metrics)
+
+# deltas = [0.02, 0.05, 0.1, 0.2, 0.25, 0.3, 0.5, 1.0]
+deltas = [0.0005, 0.001, 0.005, 0.01, 0.05, 0.1]
+max_distance = get_max_distance(X_train_scaled, y_train)
+
+modes = ['representative', 'vital'] # if not PROFILING else ['representative']
+dimensions = [(1, 'restrictedDim'), (2, 'multiDim'), (0, 'restrictedDim')] # if not PROFILING else [(1, 'restrictedDim')]
+
 def reduce(X,y,perc,method):
     if method == 'SRS':
         X_red, y_red = srs_selection(X,y,perc)
@@ -102,28 +115,19 @@ def reduce(X,y,perc,method):
 models = {'KNN': knn, 'RF': rf, 'XGB': xgb}
 reduction_methods = {'SRS': lambda X,y,perc: srs_selection(X,y,perc), 
                      'CLC': lambda X,y,perc: clc_selection(X,y,perc), 
-                     'PHL': lambda X,y,perc: phl_selection(X,y,perc=perc, topological_radius=0.05, scoring_version='restrictedDim', dimension=1, landmark_type='representative')}
+                     'PHL': lambda X,y,perc: phl_selection(X,y,perc=perc, topological_radius=0.1*max_distance, scoring_version='restrictedDim', dimension=0, landmark_type='representative')}
 
 reduction_methods_without_perc = {'CNN': lambda X,y: cnn_selection(X,y), 
                                 'DROP3': lambda X,y: drop3_selection(X,y)}
 
 all_reduction_methods = reduction_methods | reduction_methods_without_perc
 
-percentages = [0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 0.9]
-metrics = ['reduction_ratio', 'representativeness', 'accuracy', 'f1', 'training_time', 'reduction_time']
-
-# PHL Hyperparameter experiments
-phl_results = pd.DataFrame(columns=['model', 'reduction_method', 'mode', 'dimensions', 'max_dimension', 'percentage', 'delta'] + metrics)
-deltas = [0.02, 0.05, 0.1, 0.2, 0.25, 0.3, 0.5, 1.0]
-modes = ['representative', 'vital'] # if not PROFILING else ['representative']
-dimensions = [(1, 'restrictedDim'), (2, 'multiDim'), (0, 'restrictedDim')] # if not PROFILING else [(1, 'restrictedDim')]
-
 for model_name in models.keys():
         for dimension, scoring_version in dimensions:
             for delta in deltas:
                 # Get score of each instance
                 t0 = time.time()
-                outlier_scores = phl_scores(X_train_scaled, y_train, delta, scoring_version, dimension)
+                outlier_scores = phl_scores(X_train_scaled, y_train, delta*max_distance, scoring_version, dimension)
                 score_time = time.time()-t0
                 for mode in modes:
                     for percentage in percentages:

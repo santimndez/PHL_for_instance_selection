@@ -272,3 +272,22 @@ def phl_selection_from_scores(X, y, perc, landmark_type, outlier_scores):
         y_res = np.append(y_res, np.repeat(cl,n_cl))
         
     return X_res.reshape(-1, n_features), y_res
+
+def get_max_distance(X, y):
+	"""
+	Calculate the maximum distance between any two points of the same class in X.
+	"""
+	classes = np.unique(y)
+	max_distance = 0.0
+
+	for cl in classes:
+		pool_cl = np.where(y == cl)
+		X_cl = X[pool_cl]
+		
+		if len(X_cl) > 1:  # Ensure there are at least two points to compare
+			distance_matrix = pairwise_distances(X_cl, metric='euclidean')
+			max_distance_cl = np.max(distance_matrix)
+			if max_distance_cl > max_distance:
+				max_distance = max_distance_cl
+
+	return max_distance

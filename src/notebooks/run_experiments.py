@@ -2,6 +2,7 @@ import argparse
 import csv
 import subprocess
 import sys
+import time
 
 def main():
     # Argument parser setup
@@ -46,7 +47,10 @@ def main():
                     command.append('--profiling')
 
                 print(f"Running: {' '.join(command)}")
+                t0 = time.time()
                 subprocess.run(command)
+                elapsed_time = time.time() - t0
+                print(f"Finished in {elapsed_time:.2f} seconds")
     except FileNotFoundError:
         print(f"Error: File '{args.csv_file}' not found.")
         sys.exit(1)
