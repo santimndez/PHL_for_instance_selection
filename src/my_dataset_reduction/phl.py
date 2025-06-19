@@ -10,6 +10,7 @@ import numpy as np
 from ripser import ripser
 from scipy.spatial import KDTree
 from sklearn.metrics import pairwise_distances
+from sklearn.neighbors import NearestNeighbors
 
 def getMaxPersistence(ripser_pd):
 
@@ -291,3 +292,115 @@ def get_max_distance(X, y):
 				max_distance = max_distance_cl
 
 	return max_distance
+
+def get_mean_neighbors(X, y, topological_radius):
+	"""
+	Calculate the mean number of neighbors within the topological radius for each point in X.
+	"""
+	classes = np.unique(y)
+	mean_neighbors = []
+
+	for cl in classes:
+		pool_cl = np.where(y == cl)
+		X_cl = X[pool_cl]
+		
+		kd_tree = KDTree(X_cl)
+		neighbors_count = [len(kd_tree.query_ball_point(point, r=topological_radius)) - 1 for point in X_cl]
+		
+		mean_neighbors.append(np.sum(neighbors_count))
+
+	return np.sum(mean_neighbors)/len(y)
+
+def get_super_outliers(X, y, topological_radius):
+	"""
+	Identify super outliers in the dataset based on the topological radius.
+	"""
+	classes = np.unique(y)
+	super_outliers = 0
+
+	for cl in classes:
+		pool_cl = np.where(y == cl)
+		X_cl = X[pool_cl]
+		
+		kd_tree = KDTree(X_cl)
+		for point_index in range(X_cl.shape[0]):
+			point = X_cl[point_index, :]
+			indices = kd_tree.query_ball_point(point, r=topological_radius)
+			if len(indices) < 2:
+				super_outliers+=1
+
+	return super_outliers
+
+
+def estimate_delta(X, y, k):
+    """
+    Estima un radio r tal que, en promedio, cada instancia tiene k vecinos
+    de su misma clase dentro de ese radio.
+
+    Parámetros:
+        X: np.ndarray, características (ya escaladas)
+        y: np.ndarray, etiquetas (enteras o codificadas)
+        k: int, número objetivo de vecinos por instancia
+
+    Retorna:
+        r: float, radio promedio estimado
+    """
+    mean_distance_kth = 0
+
+    for cl in np.unique(y):
+        # Filtrar por clase
+        X_cl = X[y == cl]
+        n_samples = X_cl.shape[0]
+
+        # Si hay menos de k+1 instancias, no se puede calcular
+        if n_samples <= k:
+            continue
+
+        # Vecinos más cercanos dentro de la misma clase
+        nbrs = NearestNeighbors(n_neighbors=k+1, algorithm='auto', metric='euclidean')
+        nbrs.fit(X_cl)
+        distances, _ = nbrs.kneighbors(X_cl)
+
+        # Ignorar el primer vecino (distancia 0 a sí mismo)
+        kth_distances = distances[:, k]  # k+1 vecinos → índice k es el k-ésimo vecino real
+        mean_distance_kth += np.sum(kth_distances)
+    
+    return mean_distance_kth / len(y)
+
+
+def phl_scores_k(X, y, k, scoring_version, dimension):
+	"""
+	Calcula los scores de PHL basados en el número de vecinos de la misma clase
+	dentro de un radio estimado.
+
+	Parámetros:
+		X: np.ndarray, características (ya escaladas)
+		y: np.ndarray, etiquetas (enteras o codificadas)
+		k: int, número objetivo de vecinos por instancia
+
+	Retorna:
+		outlier_scores: np.ndarray, scores de PHL para cada instancia
+	"""
+	topological_radius = estimate_delta(X, y, k)
+	return phl_scores(X, y, topological_radius, scoring_version, dimension)
+
+def phl_selection_k(X, y, k, perc, scoring_version, dimension, landmark_type):
+	"""
+	Selecciona instancias representativas basadas en los scores de PHL
+	y el número de vecinos de la misma clase dentro de un radio estimado.
+
+	Parámetros:
+		X: np.ndarray, características (ya escaladas)
+		y: np.ndarray, etiquetas (enteras o codificadas)
+		k: int, número objetivo de vecinos por instancia
+		perc: float, porcentaje de reducción deseado
+		scoring_version: str, versión del scoring ('restrictedDim' o 'multiDim')
+		dimension: int, dimensión para el cálculo de PH
+		landmark_type: str, tipo de landmark ('representative' o 'vital')
+
+	Retorna:
+		X_res: np.ndarray, conjunto reducido de características
+		y_res: np.ndarray, etiquetas correspondientes al conjunto reducido
+	"""
+	outlier_scores = phl_scores_k(X, y, k, scoring_version, dimension)
+	return phl_selection_from_scores(X, y, perc, landmark_type, outlier_scores)
