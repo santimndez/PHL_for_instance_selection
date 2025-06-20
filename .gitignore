@@ -2,3 +2,4 @@ src/datasets/
 src/my_dataset_reduction/__pycache__/
 src/results/
 src/notebooks/__pycache__/
+src/notebooks/*_old.ipynb

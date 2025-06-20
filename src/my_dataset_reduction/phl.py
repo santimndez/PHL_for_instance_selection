@@ -298,7 +298,7 @@ def get_mean_neighbors(X, y, topological_radius):
 	Calculate the mean number of neighbors within the topological radius for each point in X.
 	"""
 	classes = np.unique(y)
-	mean_neighbors = []
+	mean_neighbors = 0
 
 	for cl in classes:
 		pool_cl = np.where(y == cl)
@@ -306,10 +306,10 @@ def get_mean_neighbors(X, y, topological_radius):
 		
 		kd_tree = KDTree(X_cl)
 		neighbors_count = [len(kd_tree.query_ball_point(point, r=topological_radius)) - 1 for point in X_cl]
-		
-		mean_neighbors.append(np.sum(neighbors_count))
 
-	return np.sum(mean_neighbors)/len(y)
+		mean_neighbors += np.sum(neighbors_count)
+
+	return mean_neighbors / len(y)
 
 def get_super_outliers(X, y, topological_radius):
 	"""
@@ -326,46 +326,41 @@ def get_super_outliers(X, y, topological_radius):
 		for point_index in range(X_cl.shape[0]):
 			point = X_cl[point_index, :]
 			indices = kd_tree.query_ball_point(point, r=topological_radius)
-			if len(indices) < 2:
+			if len(indices) <= 2:
 				super_outliers+=1
 
 	return super_outliers
 
 
 def estimate_delta(X, y, k):
-    """
-    Estima un radio r tal que, en promedio, cada instancia tiene k vecinos
-    de su misma clase dentro de ese radio.
+	"""
+	Estima un radio r tal que, en promedio, cada instancia tiene k vecinos
+	de su misma clase dentro de ese radio.
 
-    Parámetros:
-        X: np.ndarray, características (ya escaladas)
-        y: np.ndarray, etiquetas (enteras o codificadas)
-        k: int, número objetivo de vecinos por instancia
+	Parámetros:
+		X: np.ndarray, características (ya escaladas)
+		y: np.ndarray, etiquetas (enteras o codificadas)
+		k: int, número objetivo de vecinos por instancia. Debe ser menor o igual que el número de instancias de la clase minoritaria.
 
-    Retorna:
-        r: float, radio promedio estimado
-    """
-    mean_distance_kth = 0
+	Retorna:
+		r: float, radio promedio estimado
+	"""
+	kth_distances = np.zeros(len(y), dtype=float)
 
-    for cl in np.unique(y):
-        # Filtrar por clase
-        X_cl = X[y == cl]
-        n_samples = X_cl.shape[0]
+	for cl in np.unique(y):
+		# Filtrar por clase
+		X_cl = X[y == cl]
 
-        # Si hay menos de k+1 instancias, no se puede calcular
-        if n_samples <= k:
-            continue
+		# Vecinos más cercanos dentro de la misma clase
+		nbrs = NearestNeighbors(n_neighbors=k+1, algorithm='auto', metric='euclidean')
+		nbrs.fit(X_cl)
+		distances, _ = nbrs.kneighbors(X_cl)
 
-        # Vecinos más cercanos dentro de la misma clase
-        nbrs = NearestNeighbors(n_neighbors=k+1, algorithm='auto', metric='euclidean')
-        nbrs.fit(X_cl)
-        distances, _ = nbrs.kneighbors(X_cl)
-
-        # Ignorar el primer vecino (distancia 0 a sí mismo)
-        kth_distances = distances[:, k]  # k+1 vecinos → índice k es el k-ésimo vecino real
-        mean_distance_kth += np.sum(kth_distances)
-    
-    return mean_distance_kth / len(y)
+		# Ignorar el primer vecino (distancia 0 a sí mismo)
+		kth_distances[y==cl] = distances[:, k]  # k+1 vecinos → índice k es el k-ésimo vecino real
+	
+	# return median of kth distances
+	return np.median(kth_distances)
 
 
 def phl_scores_k(X, y, k, scoring_version, dimension):

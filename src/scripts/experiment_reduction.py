@@ -24,7 +24,7 @@ from data_reduction.representativeness import find_epsilon
 # warnings.filterwarnings("ignore", category=FutureWarning)
 
 sys.path.append('../')
-from my_dataset_reduction import phl_selection, phl_selection_from_scores, phl_scores, get_max_distance, \
+from my_dataset_reduction import phl_selection_k, phl_selection_from_scores, phl_scores_k, get_max_distance, \
                                  srs_selection, clc_selection, drop3_selection, cnn_selection
 
 # argparser
@@ -98,17 +98,16 @@ percentages = [0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 0.9]
 metrics = ['reduction_ratio', 'representativeness', 'accuracy', 'f1', 'training_time', 'reduction_time']
 
 # PHL parameters
-DELTA = 0.001
-max_distance = get_max_distance(X_train_scaled, y_train)
-MODE = 'representative'
+K = 5
+MODE = ['representative', 'vital']
 SCORING_VERSION = 'restrictedDim'  # 'restrictedDim', 'multiDim'
 MAX_DIMENSION = 0
 
 models = {'KNN': knn, 'RF': rf, 'XGB': xgb}
 reduction_methods = {'SRS': lambda X,y,perc: srs_selection(X,y,perc), 
                      'CLC': lambda X,y,perc: clc_selection(X,y,perc), 
-                     'PHL': lambda X,y,perc: phl_selection(X,y,perc=perc, 
-                                                           topological_radius=DELTA*max_distance, 
+                     'PHL': lambda X,y,perc: phl_selection_k(X,y,perc=perc, 
+                                                           k=K, 
                                                            scoring_version=SCORING_VERSION, 
                                                            dimension=MAX_DIMENSION, 
                                                            landmark_type=MODE)}
