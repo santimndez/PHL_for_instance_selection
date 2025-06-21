@@ -99,7 +99,7 @@ metrics = ['reduction_ratio', 'representativeness', 'accuracy', 'f1', 'training_
 
 # PHL parameters
 SCORING_VERSION = 'restrictedDim'
-DATASIZE_THRESHOLD = 50000  # Threshold for divide and conquer reduction
+DATASIZE_THRESHOLD = 75000  # Threshold for divide and conquer reduction
 
 models = {'KNN': knn, 'RF': rf, 'XGB': xgb}
 
