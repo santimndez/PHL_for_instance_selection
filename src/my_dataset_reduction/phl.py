@@ -33,7 +33,7 @@ def getPHOutlierScores_multiDim(point_cloud,topological_radius,max_dim_ripser):
 	kd_tree = KDTree(point_cloud)
 
 	# precompute distance matrix
-	distance_matrix = pairwise_distances(point_cloud, metric='euclidean', n_jobs=-1)
+	distance_matrix = pairwise_distances(point_cloud, metric='euclidean', n_jobs=-1).astype(np.float16)
 
 	#for point in point cloud, get delta nhood
 	for point_index in range(point_cloud.shape[0]):
@@ -83,7 +83,7 @@ def getPHOutlierScores_restrictedDim(point_cloud,topological_radius,dimension):
 	kd_tree = KDTree(point_cloud)
 
     # precompute distance matrix
-	distance_matrix = pairwise_distances(point_cloud, metric='euclidean')
+	distance_matrix = pairwise_distances(point_cloud, metric='euclidean').astype(np.float16)
 	
 
 	#for point in point cloud, get delta nhood
@@ -286,7 +286,7 @@ def get_max_distance(X, y):
 		X_cl = X[pool_cl]
 		
 		if len(X_cl) > 1:  # Ensure there are at least two points to compare
-			distance_matrix = pairwise_distances(X_cl, metric='euclidean')
+			distance_matrix = pairwise_distances(X_cl, metric='euclidean').astype(np.float16)
 			max_distance_cl = np.max(distance_matrix)
 			if max_distance_cl > max_distance:
 				max_distance = max_distance_cl

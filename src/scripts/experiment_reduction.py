@@ -24,9 +24,9 @@ from data_reduction.representativeness import find_epsilon
 # warnings.filterwarnings("ignore", category=FutureWarning)
 
 sys.path.append('../')
-from my_dataset_reduction import phl_selection_k, phl_selection_from_scores, phl_scores_k, \
+from my_dataset_reduction import phl_selection_from_scores, phl_scores_k, \
                                  srs_selection, clc_selection, drop3_selection, cnn_selection
-
+from my_dataset_reduction import divide_and_conquer_scores
 # argparser
 parser = argparse.ArgumentParser(description='Instance selection experiment')
 parser.add_argument('-d', '--dataset', type=str, default='../datasets/dry+bean+dataset/DryBeanDataset/Dry_Bean_Dataset.xlsx', help='Dataset to use for the experiment')
@@ -99,6 +99,7 @@ metrics = ['reduction_ratio', 'representativeness', 'accuracy', 'f1', 'training_
 
 # PHL parameters
 SCORING_VERSION = 'restrictedDim'
+DATASIZE_THRESHOLD = 50000  # Threshold for divide and conquer reduction
 
 models = {'KNN': knn, 'RF': rf, 'XGB': xgb}
 
@@ -182,7 +183,7 @@ for percentage in tqdm(percentages, desc="Reducing dataset with SRS method", lea
             }, ignore_index=True)
 
 srs_mean_results = srs_results.groupby('percentage').mean().reset_index()  
-results.append(srs_mean_results.assign(model=model_name, reduction_method='SRS'), ignore_index=True)
+results = results.append(srs_mean_results.assign(model=model_name, reduction_method='SRS'), ignore_index=True)
 # Save temporary results
 results.to_csv(results_folder + 'results.csv', index=False)
 
@@ -262,10 +263,13 @@ for reduction_method, reduce in tqdm(reduction_methods.items(), desc="Reduction 
 for phl_method in tqdm(phl_methods, desc="PHL methods"):
     # Get outlier scores
     t0 = time.time()
-    scores = phl_scores_k(X_train_scaled, y_train, 
-                          k=phl_method[1], 
-                          scoring_version=phl_method[0], 
-                          dimension=phl_method[1])
+    scores = divide_and_conquer_scores(X_train_scaled,
+                                       y_train,
+                                       threshold=DATASIZE_THRESHOLD,
+                                       score_func=phl_scores_k,
+                                       k=phl_method[1],
+                                       scoring_version=phl_method[0],
+                                       dimension=phl_method[1])
     score_time = time.time() - t0
     for percentage in tqdm(percentages, desc="Percentages", leave=False):
         # Select instances based on scores
