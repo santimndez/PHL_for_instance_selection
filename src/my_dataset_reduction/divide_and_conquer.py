@@ -23,8 +23,8 @@ def divide_and_conquer_reduction(X, y, threshold, reduce_func, seed=None, **args
         return reduce_func(X, y, **args)
 
     Xa, Xb, ya, yb = train_test_split(X, y, test_size=0.5, stratify=y, random_state=seed)
-    left_X, left_y = divide_and_conquer_reduction(Xa, ya, threshold, reduce_func, seed+1, **args) # Vary the seed for each split
-    right_X, right_y = divide_and_conquer_reduction(Xb, yb, threshold, reduce_func, seed+2, **args)
+    left_X, left_y = divide_and_conquer_reduction(Xa, ya, threshold, reduce_func, seed+1 if seed is not None else None, **args) # Vary the seed for each split
+    right_X, right_y = divide_and_conquer_reduction(Xb, yb, threshold, reduce_func, seed+2 if seed is not None else None, **args)
 
     return np.vstack((left_X, right_X)), np.concatenate((left_y, right_y))
 
@@ -55,7 +55,7 @@ def divide_and_conquer_scores(X, y, threshold, score_func, seed=None, **args):
     Xb, yb = X[idx_b], y[idx_b]
 
     scores = np.zeros(n, dtype=float)
-    scores[idx_a] = divide_and_conquer_scores(Xa, ya, threshold, score_func, seed+1, **args) # Vary the seed for each split
-    scores[idx_b] = divide_and_conquer_scores(Xb, yb, threshold, score_func, seed+2, **args)
+    scores[idx_a] = divide_and_conquer_scores(Xa, ya, threshold, score_func, seed+1 if seed is not None else None, **args) # Vary the seed for each split
+    scores[idx_b] = divide_and_conquer_scores(Xb, yb, threshold, score_func, seed+2 if seed is not None else None, **args)
 
     return scores
