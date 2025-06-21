@@ -1,0 +1,2 @@
+dataset,output,target
+../datasets/diabetes_health_indicators/diabetes_binary_health_indicators_BRFSS2015.csv,../results/diabetes_binary/,Diabetes_binary

@@ -5,7 +5,7 @@ import os
 import sys
 import argparse
 
-import tqdm  # For progress bar
+from tqdm import tqdm  # For progress bar
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -24,7 +24,7 @@ from data_reduction.representativeness import find_epsilon
 # warnings.filterwarnings("ignore", category=FutureWarning)
 
 sys.path.append('../')
-from my_dataset_reduction import phl_selection_k, phl_selection_from_scores, phl_scores_k, get_max_distance, \
+from my_dataset_reduction import phl_selection_k, phl_selection_from_scores, phl_scores_k, \
                                  srs_selection, clc_selection, drop3_selection, cnn_selection
 
 # argparser
@@ -98,19 +98,18 @@ percentages = [0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 0.9]
 metrics = ['reduction_ratio', 'representativeness', 'accuracy', 'f1', 'training_time', 'reduction_time']
 
 # PHL parameters
-K = 5
-MODE = ['representative', 'vital']
-SCORING_VERSION = 'restrictedDim'  # 'restrictedDim', 'multiDim'
-MAX_DIMENSION = 0
+SCORING_VERSION = 'restrictedDim'
 
 models = {'KNN': knn, 'RF': rf, 'XGB': xgb}
-reduction_methods = {'SRS': lambda X,y,perc: srs_selection(X,y,perc), 
-                     'CLC': lambda X,y,perc: clc_selection(X,y,perc), 
-                     'PHL': lambda X,y,perc: phl_selection_k(X,y,perc=perc, 
-                                                           k=K, 
-                                                           scoring_version=SCORING_VERSION, 
-                                                           dimension=MAX_DIMENSION, 
-                                                           landmark_type=MODE)}
+
+SRS_REPS = 5 # Number of repetitions for SRS selection
+
+reduction_methods = {'CLC': lambda X,y,perc: clc_selection(X,y,perc)}
+
+
+phl_methods = {('restrictedDim', 0, 3, 'representative'),
+               ('restrictedDim', 1, 3, 'representative'),
+              ('restrictedDim', 0, 5, 'vital')}
 
 reduction_methods_without_perc = {'CNN': lambda X,y: cnn_selection(X,y), 
                                 'DROP3': lambda X,y: drop3_selection(X,y)}
@@ -149,39 +148,77 @@ for model_name, model in tqdm(models.items(), desc="Fitting models with full dat
 # Save temporary results
 results.to_csv(results_folder + 'results.csv', index=False)
 
+# Reduce the dataset with SRS method
+srs_results = pd.DataFrame(columns=['percentage'] + metrics)
+for percentage in tqdm(percentages, desc="Reducing dataset with SRS method", leave=False):
+    for _ in tqdm(range(SRS_REPS), desc="SRS repetition", leave=False):
+        # Reduce the dataset
+        t0 = time.time()
+        X_red, y_red = srs_selection(X_train_scaled, y_train, percentage)
+        reduction_time = time.time() - t0
+        for model_name, model in tqdm(models.items(), desc="Models", leave=False):
+            # Fit the model
+            t0 = time.time()
+            model.fit(X_red, y_red)
+            training_time = time.time() - t0
+
+            # Evaluate the model
+            y_pred_test = model.predict(X_test_scaled)
+            accuracy = accuracy_score(y_test, y_pred_test)
+            f1 = f1_score(y_test, y_pred_test, average='weighted')
+
+            # Calculate representativeness
+            epsilon = find_epsilon(X_train_scaled, y_train, X_red, y_red)
+
+            # Store the results
+            srs_results = srs_results.append({
+                'percentage': percentage,
+                'reduction_ratio': len(y_red) / len(y_train),
+                'representativeness': epsilon,
+                'accuracy': accuracy,
+                'f1': f1,
+                'training_time': training_time,
+                'reduction_time': reduction_time,
+            }, ignore_index=True)
+
+srs_mean_results = srs_results.groupby('percentage').mean().reset_index()  
+results.append(srs_mean_results.assign(model=model_name, reduction_method='SRS'), ignore_index=True)
+# Save temporary results
+results.to_csv(results_folder + 'results.csv', index=False)
+
 # Reduce the dataset with methods that do not require percentage
-for model_name, model in tqdm(models.items(), desc="Reducing dataset with methods without percentage"):
-    for reduction_method, reduce in tqdm(reduction_methods_without_perc.items(), desc="Reduction methods without percentage", leave=False):
+if len(y_train)<50000:
+    for reduction_method, reduce in tqdm(reduction_methods_without_perc.items(), desc="Reducing dataset with methods without percentage"):
         # Reduce the dataset
         t0 = time.time()
         X_red, y_red = reduce(X_train_scaled, y_train)
-        reduction_time = time.time() - t0
+        reduction_time = time.time() - t0    
+        for model_name, model in tqdm(models.items(), desc="Reduction methods without percentage", leave=False):
+            # Fit the model
+            t0 = time.time()
+            model.fit(X_red, y_red)
+            training_time = time.time() - t0
 
-        # Fit the model
-        t0 = time.time()
-        model.fit(X_red, y_red)
-        training_time = time.time() - t0
+            # Evaluate the model
+            y_pred_test = model.predict(X_test_scaled)
+            accuracy = accuracy_score(y_test, y_pred_test)
+            f1 = f1_score(y_test, y_pred_test, average='weighted')
 
-        # Evaluate the model
-        y_pred_test = model.predict(X_test_scaled)
-        accuracy = accuracy_score(y_test, y_pred_test)
-        f1 = f1_score(y_test, y_pred_test, average='weighted')
+            # Calculate representativeness
+            epsilon = find_epsilon(X_train_scaled, y_train, X_red, y_red)
 
-        # Calculate representativeness
-        epsilon = find_epsilon(X_train_scaled, y_train, X_red, y_red)
-
-        # Store the results
-        results = results.append({
-            'model': model_name,
-            'reduction_method': reduction_method,
-            'percentage': 0,
-            'reduction_ratio': len(y_red) / len(y_train),
-            'representativeness': epsilon,
-            'accuracy': accuracy,
-            'f1': f1,
-            'training_time': training_time,
-            'reduction_time': reduction_time,
-        }, ignore_index=True)
+            # Store the results
+            results = results.append({
+                'model': model_name,
+                'reduction_method': reduction_method,
+                'percentage': 0,
+                'reduction_ratio': len(y_red) / len(y_train),
+                'representativeness': epsilon,
+                'accuracy': accuracy,
+                'f1': f1,
+                'training_time': training_time,
+                'reduction_time': reduction_time,
+            }, ignore_index=True)
 
 # Save temporary results
 results.to_csv(results_folder + 'results.csv', index=False)
@@ -220,6 +257,50 @@ for reduction_method, reduce in tqdm(reduction_methods.items(), desc="Reduction 
                 'training_time': training_time,
                 'reduction_time': reduction_time,
             }, ignore_index=True)
+
+# Reduce the dataset with PHL methods
+for phl_method in tqdm(phl_methods, desc="PHL methods"):
+    # Get outlier scores
+    t0 = time.time()
+    scores = phl_scores_k(X_train_scaled, y_train, 
+                          k=phl_method[1], 
+                          scoring_version=phl_method[0], 
+                          dimension=phl_method[1])
+    score_time = time.time() - t0
+    for percentage in tqdm(percentages, desc="Percentages", leave=False):
+        # Select instances based on scores
+        t0 = time.time()
+        X_red, y_red = phl_selection_from_scores(X_train_scaled, y_train, percentage,
+                                                 landmark_type=phl_method[3],
+                                                 outlier_scores=scores)
+        reduction_time = time.time() - t0
         
+        for model_name, model in models.items():
+            # Fit the model
+            t0 = time.time()
+            model.fit(X_red, y_red)
+            training_time = time.time() - t0
+
+            # Evaluate the model
+            y_pred_test = model.predict(X_test_scaled)
+            accuracy = accuracy_score(y_test, y_pred_test)
+            f1 = f1_score(y_test, y_pred_test, average='weighted')
+
+            # Calculate representativeness
+            epsilon = find_epsilon(X_train_scaled, y_train, X_red, y_red)
+
+            # Store the results
+            reduction_method = f'PHL_{"R" if phl_method[3] == "representative" else "V"}{phl_method[1] if phl_method[0] == "restrictedDim" else "".join([str(i) for i in range(phl_method[1]+1)])}_k={phl_method[2]}'
+            results = results.append({
+                'model': model_name,
+                'reduction_method': reduction_method,
+                'percentage': percentage,
+                'reduction_ratio': len(y_red) / len(y_train),
+                'representativeness': epsilon,
+                'accuracy': accuracy,
+                'f1': f1,
+                'training_time': training_time,
+                'reduction_time': reduction_time + score_time,
+            }, ignore_index=True)
 # Save the results
 results.to_csv(results_folder + 'results.csv', index=False)

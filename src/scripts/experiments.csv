@@ -2,3 +2,4 @@ dataset,output,target
 ../datasets/pima.csv,../results/pima/,Outcome
 ../datasets/dry+bean+dataset/DryBeanDataset/Dry_Bean_Dataset.xlsx,../results/drybeans/,Class
 ../datasets/diabetes_health_indicators/diabetes_binary_5050split_health_indicators_BRFSS2015.csv,../results/diabetes_binary_5050split/,Diabetes_binary
+../datasets/diabetes_health_indicators/diabetes_binary_health_indicators_BRFSS2015.csv,../results/diabetes_binary/,Diabetes_binary
