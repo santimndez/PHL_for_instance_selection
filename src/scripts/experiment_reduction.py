@@ -149,6 +149,7 @@ for model_name, model in tqdm(models.items(), desc="Fitting models with full dat
 # Save temporary results
 results.to_csv(results_folder + 'results.csv', index=False)
 
+
 # Reduce the dataset with SRS method
 srs_results = pd.DataFrame(columns=['percentage'] + metrics)
 for percentage in tqdm(percentages, desc="Reducing dataset with SRS method", leave=False):
@@ -173,6 +174,7 @@ for percentage in tqdm(percentages, desc="Reducing dataset with SRS method", lea
 
             # Store the results
             srs_results = srs_results.append({
+                'model': model_name,
                 'percentage': percentage,
                 'reduction_ratio': len(y_red) / len(y_train),
                 'representativeness': epsilon,
@@ -182,8 +184,8 @@ for percentage in tqdm(percentages, desc="Reducing dataset with SRS method", lea
                 'reduction_time': reduction_time,
             }, ignore_index=True)
 
-srs_mean_results = srs_results.groupby('percentage').mean().reset_index()  
-results = results.append(srs_mean_results.assign(model=model_name, reduction_method='SRS'), ignore_index=True)
+srs_mean_results = srs_results.groupby(['model', 'percentage']).mean().reset_index()  
+results = results.append(srs_mean_results.assign(reduction_method='SRS'), ignore_index=True)
 # Save temporary results
 results.to_csv(results_folder + 'results.csv', index=False)
 
