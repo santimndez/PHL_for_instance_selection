@@ -152,7 +152,7 @@ results.to_csv(results_folder + 'results.csv', index=False)
 
 # Reduce the dataset with SRS method
 srs_results = pd.DataFrame(columns=['percentage'] + metrics)
-for percentage in tqdm(percentages, desc="Reducing dataset with SRS method", leave=False):
+for percentage in tqdm(percentages, desc="Reducing dataset with SRS method"):
     for _ in tqdm(range(SRS_REPS), desc="SRS repetition", leave=False):
         # Reduce the dataset
         t0 = time.time()
@@ -227,7 +227,7 @@ if len(y_train)<50000:
 results.to_csv(results_folder + 'results.csv', index=False)
 
 # Reduce the dataset with methods that require percentage
-for reduction_method, reduce in tqdm(reduction_methods.items(), desc="Reduction methods with percentage", leave=False):
+for reduction_method, reduce in tqdm(reduction_methods.items(), desc="Reduction methods with percentage"):
     for percentage in tqdm(percentages, desc="Percentages", leave=False):
         # Reduce the dataset
         t0 = time.time()
