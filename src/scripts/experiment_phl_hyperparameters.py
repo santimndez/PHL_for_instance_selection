@@ -30,7 +30,7 @@ from my_dataset_reduction import srs_selection
 # argparser
 parser = argparse.ArgumentParser(description='Instance selection experiment')
 parser.add_argument('-d', '--dataset', type=str, default='../datasets/dry+bean+dataset/DryBeanDataset/Dry_Bean_Dataset.xlsx', help='Dataset to use for the experiment')
-parser.add_argument('-o', '--output', type=str, default='../results/drybeans/', help='Output folder for the results. ')
+parser.add_argument('-o', '--output', type=str, default='../results/phl_hyperparameter_experiment/', help='Output folder for the results. ')
 parser.add_argument('-t', '--target', type=str, default='Class', help='Target column in the dataset')
 parser.add_argument('--profiling', action='store_true', help='Enable profiling mode for quick tests (uses a subset of the dataset)')
 parser.add_argument('--seed', type=int, default=2025, help='Random seed for reproducibility')

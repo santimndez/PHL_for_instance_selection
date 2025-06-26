@@ -99,7 +99,7 @@ metrics = ['reduction_ratio', 'representativeness', 'accuracy', 'f1', 'training_
 
 # PHL parameters
 SCORING_VERSION = 'restrictedDim'
-DATASIZE_THRESHOLD = 75000  # Threshold for divide and conquer reduction
+DATASIZE_THRESHOLD = 50000  # Threshold for divide and conquer reduction
 
 models = {'KNN': knn, 'RF': rf, 'XGB': xgb}
 
@@ -113,7 +113,9 @@ phl_methods = {('restrictedDim', 0, 3, 'representative'),
               ('restrictedDim', 0, 5, 'vital')}
 
 reduction_methods_without_perc = {'CNN': lambda X,y: cnn_selection(X,y), 
-                                'DROP3': lambda X,y: drop3_selection(X,y)}
+                                'DROP3': lambda X,y: drop3_selection(X,y)} \
+                                if len(X_train_scaled) < 50000 \
+                                else {'CNN': lambda X,y: cnn_selection(X,y)} # DROP3 is not applicable for large datasets
 
 all_reduction_methods = reduction_methods | reduction_methods_without_perc
 
@@ -190,8 +192,7 @@ results = results.append(srs_mean_results.assign(reduction_method='SRS'), ignore
 results.to_csv(results_folder + 'results.csv', index=False)
 
 # Reduce the dataset with methods that do not require percentage
-if len(y_train)<50000:
-    for reduction_method, reduce in tqdm(reduction_methods_without_perc.items(), desc="Reducing dataset with methods without percentage"):
+for reduction_method, reduce in tqdm(reduction_methods_without_perc.items(), desc="Reducing dataset with methods without percentage"):
         # Reduce the dataset
         t0 = time.time()
         X_red, y_red = reduce(X_train_scaled, y_train)
@@ -269,7 +270,7 @@ for phl_method in tqdm(phl_methods, desc="PHL methods"):
                                        y_train,
                                        threshold=DATASIZE_THRESHOLD,
                                        score_func=phl_scores_k,
-                                       k=phl_method[1],
+                                       k=phl_method[2],
                                        scoring_version=phl_method[0],
                                        dimension=phl_method[1])
     score_time = time.time() - t0
