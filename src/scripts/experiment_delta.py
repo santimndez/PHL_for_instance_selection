@@ -14,15 +14,15 @@ from my_dataset_reduction import get_super_outliers, get_mean_neighbors, get_max
 DATASETS = [
     '../datasets/pima.csv',
     '../datasets/dry+bean+dataset/DryBeanDataset/Dry_Bean_Dataset.xlsx',
-    #'../datasets/diabetes_health_indicators/diabetes_binary_5050split_health_indicators_BRFSS2015.csv',
-    #'../datasets/diabetes_health_indicators/diabetes_binary_health_indicators_BRFSS2015.csv',
+    # '../datasets/diabetes_health_indicators/diabetes_binary_5050split_health_indicators_BRFSS2015.csv',
+    # '../datasets/diabetes_health_indicators/diabetes_binary_health_indicators_BRFSS2015.csv',
 ]
 
 TARGETS = [
     'Outcome',  # Pima Indians Diabetes Database
     'Class',    # Dry Bean Dataset
-    #'Diabetes_binary',  # Diabetes Health Indicators Dataset (5050 split)
-    #'Diabetes_binary',  # Diabetes Health Indicators Dataset (full)
+    # 'Diabetes_binary',  # Diabetes Health Indicators Dataset (5050 split)
+    # 'Diabetes_binary',  # Diabetes Health Indicators Dataset (full)
 ]
 
 # argparser

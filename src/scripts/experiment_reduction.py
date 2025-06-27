@@ -108,15 +108,11 @@ SRS_REPS = 5 # Number of repetitions for SRS selection
 reduction_methods = {'CLC': lambda X,y,perc: clc_selection(X,y,perc)}
 
 
-phl_methods = {('restrictedDim', 0, 3, 'representative'),
-               ('restrictedDim', 1, 3, 'representative'),
-              ('restrictedDim', 0, 5, 'vital')}
+phl_methods = [('restrictedDim', 0, 3, ['representative', 'vital']),
+               ('restrictedDim', 1, 3, ['representative'])]
 
 reduction_methods_without_perc = {'CNN': lambda X,y: cnn_selection(X,y), 
-                                'DROP3': lambda X,y: drop3_selection(X,y)} \
-                                if len(X_train_scaled) < 50000 \
-                                else {'CNN': lambda X,y: cnn_selection(X,y)} # DROP3 is not applicable for large datasets
-
+                                'DROP3': lambda X,y: drop3_selection(X,y)}
 all_reduction_methods = reduction_methods | reduction_methods_without_perc
 
 # EXPERIMENT OF COMPARISON OF INSTANCE SELECTION METHODS
@@ -192,7 +188,9 @@ results = results.append(srs_mean_results.assign(reduction_method='SRS'), ignore
 results.to_csv(results_folder + 'results.csv', index=False)
 
 # Reduce the dataset with methods that do not require percentage
-for reduction_method, reduce in tqdm(reduction_methods_without_perc.items(), desc="Reducing dataset with methods without percentage"):
+
+if len(X_train_scaled) < 50000: # CNN and DROP3 are inapplicable to large datasets
+    for reduction_method, reduce in tqdm(reduction_methods_without_perc.items(), desc="Reducing dataset with methods without percentage"):
         # Reduce the dataset
         t0 = time.time()
         X_red, y_red = reduce(X_train_scaled, y_train)
@@ -275,39 +273,40 @@ for phl_method in tqdm(phl_methods, desc="PHL methods"):
                                        dimension=phl_method[1])
     score_time = time.time() - t0
     for percentage in tqdm(percentages, desc="Percentages", leave=False):
+        for landmark_type in phl_method[3]:
         # Select instances based on scores
-        t0 = time.time()
-        X_red, y_red = phl_selection_from_scores(X_train_scaled, y_train, percentage,
-                                                 landmark_type=phl_method[3],
-                                                 outlier_scores=scores)
-        reduction_time = time.time() - t0
-        
-        for model_name, model in models.items():
-            # Fit the model
             t0 = time.time()
-            model.fit(X_red, y_red)
-            training_time = time.time() - t0
+            X_red, y_red = phl_selection_from_scores(X_train_scaled, y_train, percentage,
+                                                    landmark_type=landmark_type,
+                                                    outlier_scores=scores)
+            reduction_time = time.time() - t0
+            
+            for model_name, model in models.items():
+                # Fit the model
+                t0 = time.time()
+                model.fit(X_red, y_red)
+                training_time = time.time() - t0
 
-            # Evaluate the model
-            y_pred_test = model.predict(X_test_scaled)
-            accuracy = accuracy_score(y_test, y_pred_test)
-            f1 = f1_score(y_test, y_pred_test, average='weighted')
+                # Evaluate the model
+                y_pred_test = model.predict(X_test_scaled)
+                accuracy = accuracy_score(y_test, y_pred_test)
+                f1 = f1_score(y_test, y_pred_test, average='weighted')
 
-            # Calculate representativeness
-            epsilon = find_epsilon(X_train_scaled, y_train, X_red, y_red)
+                # Calculate representativeness
+                epsilon = find_epsilon(X_train_scaled, y_train, X_red, y_red)
 
-            # Store the results
-            reduction_method = f'PHL_{"R" if phl_method[3] == "representative" else "V"}{phl_method[1] if phl_method[0] == "restrictedDim" else "".join([str(i) for i in range(phl_method[1]+1)])}_k={phl_method[2]}'
-            results = results.append({
-                'model': model_name,
-                'reduction_method': reduction_method,
-                'percentage': percentage,
-                'reduction_ratio': len(y_red) / len(y_train),
-                'representativeness': epsilon,
-                'accuracy': accuracy,
-                'f1': f1,
-                'training_time': training_time,
-                'reduction_time': reduction_time + score_time,
-            }, ignore_index=True)
+                # Store the results
+                reduction_method = f'PHL_{"R" if landmark_type == "representative" else "V"}{phl_method[1] if phl_method[0] == "restrictedDim" else "".join([str(i) for i in range(phl_method[1]+1)])}_k={phl_method[2]}'
+                results = results.append({
+                    'model': model_name,
+                    'reduction_method': reduction_method,
+                    'percentage': percentage,
+                    'reduction_ratio': len(y_red) / len(y_train),
+                    'representativeness': epsilon,
+                    'accuracy': accuracy,
+                    'f1': f1,
+                    'training_time': training_time,
+                    'reduction_time': reduction_time + score_time,
+                }, ignore_index=True)
 # Save the results
 results.to_csv(results_folder + 'results.csv', index=False)
