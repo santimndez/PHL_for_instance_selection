@@ -1,4 +1,3 @@
-
 import numpy as np
 from sklearn.utils.validation import check_X_y
 from sklearn.neighbors import KNeighborsClassifier

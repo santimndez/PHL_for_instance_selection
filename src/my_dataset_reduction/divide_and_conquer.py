@@ -1,6 +1,4 @@
 import numpy as np
-
-# import train test split
 from sklearn.model_selection import train_test_split
 
 def divide_and_conquer_reduction(X, y, threshold, reduce_func, seed=None, **args):

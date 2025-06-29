@@ -42,4 +42,3 @@ def cnn_selection(X, y, perc=None, n_neighbors=3):
     X_res, y_res = cnn_sampler.fit_resample(X, y)
     
     return X_res, y_res
-
