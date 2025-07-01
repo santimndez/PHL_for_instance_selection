@@ -1,12 +1,26 @@
+# Modified from original work by Perera-Lago J, Toscano-Duran V, Paluzo-Hidalgo E et al.
+# Copyright 2024 Original Authors
+# Modifications copyright 2025 Santiago Méndez García
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Citation request:
+# If you use this code in your research, please cite:
+# Perera-Lago J, Toscano-Duran V, Paluzo-Hidalgo E et al.
+# "An in-depth analysis of data reduction methods for sustainable deep learning"
+# Open Res Europe 2024, 4:101 (https://doi.org/10.12688/openreseurope.17554.2)
+
 import numpy as np
-##############################################################################
-#PHL
-#PH Landmarks Selection
-
-# sys.path.append(path + "Outlier-robust-subsampling-techniques-for-persistent-homology")
-# from getPHLandmarks import getPHLandmarks
-# # os.chdir("../../")
-
 from ripser import ripser
 from scipy.spatial import KDTree
 from sklearn.metrics import pairwise_distances

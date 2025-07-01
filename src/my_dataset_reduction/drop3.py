@@ -1,3 +1,10 @@
+# Modified from original work by Cunha et al. (2023)
+#
+# If you use this code in scientific work, please cite:
+# Cunha, W., Viegas, F., França, C., Rosa, T., Rocha, L., & Gonçalves, M. A. (2023).
+# A Comparative Survey of Instance Selection Methods applied to NonNeural and Transformer-Based Text Classification.
+# ACM Computing Surveys. https://dl.acm.org/doi/10.1145/3582000
+
 import numpy as np
 from sklearn.utils.validation import check_X_y
 from sklearn.neighbors import KNeighborsClassifier
